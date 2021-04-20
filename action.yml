@@ -2,12 +2,17 @@ name: 'Lines Of Code Alert'
 description: 'Github Action that throws an error when the specified maximum LOC count is reached by any file'
 author: 'This Dot, Inc'
 inputs:
+  fileOrFolderToProcess:
+    required: false
+    description: 'The file or folder to process'
+    default: '.'
   filesToIgnore:
     required: false
-    description: 'Regular expresion to ignore files and folders'
+    description: 'A list of directories to ignore. Supports glob patterns.'
+    default: '[node_modules, .git, dist, .github]'
   maxCount:
     required: true
-    description: 'The maximum number of LOC that a any file can have'
+    description: 'The maximum number of LOC for the sum of files'
 runs:
   using: 'node12'
   main: 'dist/index.js'
