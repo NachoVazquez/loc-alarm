@@ -1,16 +1,28 @@
 import * as core from '@actions/core'
-import {wait} from './wait'
+import sloc from 'node-sloc'
 
 async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+    const filesToIgnore = JSON.parse(core.getInput('filesToIgnore'))
+    const maxCount: number = +core.getInput('filesToIgnore')
+    const fileOrFolderToProcess: string = core.getInput('fileOrFolderToProcess')
 
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const stats = await sloc({
+      path: fileOrFolderToProcess,
+      extensions: ['ts', 'html', 'css', 'scss'],
+      ignorePaths: filesToIgnore,
+      ignoreDefault: true
+    })
 
-    core.setOutput('time', new Date().toTimeString())
+    if ((stats?.sloc || 0) > maxCount) {
+      core.setFailed(
+        `The total amount of lines exceeds the maximum allowed.
+        Total Amount: ${stats?.sloc}
+        Max Count: ${maxCount}`
+      )
+    }
+
+    core.debug(stats?.sloc?.toString() || '')
   } catch (error) {
     core.setFailed(error.message)
   }
