@@ -1,16 +1,39 @@
 import * as core from '@actions/core'
-import {wait} from './wait'
+import sloc from 'node-sloc'
 
 async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+    // extract inputs
+    const filesAndFoldersToIgnore = JSON.parse(
+      core.getInput('filesAndFoldersToIgnore')
+    )
+    const maxCount: number = +core.getInput('maxCount')
+    const fileOrFolderToProcess: string = core.getInput('fileOrFolderToProcess')
 
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    // calculate loc stats
+    const stats = await sloc({
+      path: fileOrFolderToProcess,
+      extensions: ['ts', 'html', 'css', 'scss'],
+      ignorePaths: filesAndFoldersToIgnore,
+      ignoreDefault: true
+    })
 
-    core.setOutput('time', new Date().toTimeString())
+    // set the output of the action
+    core.setOutput('locs', stats?.sloc)
+
+    // debug information is only available when enabling debug logging https://docs.github.com/en/actions/managing-workflow-runs/enabling-debug-logging
+    core.debug(`LOC ${stats?.sloc?.toString() || ''}`)
+    core.debug(`Max Count ${maxCount.toString() || ''}`)
+
+    // verify that locs threshold is not exceeded
+    if ((stats?.sloc || 0) > maxCount) {
+      core.debug('Threshold exceeded')
+      throw new Error(
+        `The total amount of lines exceeds the maximum allowed.
+        Total Amount: ${stats?.sloc}
+        Max Count: ${maxCount}`
+      )
+    }
   } catch (error) {
     core.setFailed(error.message)
   }
